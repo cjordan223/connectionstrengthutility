@@ -1,36 +1,32 @@
-#client.py
 import requests
 import json
 import time
 import speedtest
 import socket
 from datetime import datetime
-import pytz
+# tried calling speedtest server directly
+
+# FIXED
+# https://stackoverflow.com/questions/39970606/gaierror-errno-8-nodename-nor-servname-provided-or-not-known-with-macos-sie
+# can directly use localhost if the script is intended to run on the same machine.
 
 SERVER_URL = "http://192.168.0.19:5075/speedtest"
+SERVER_ID = 17846
 
-def get_local_ip():
+def get_ip_address():
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(0)
-        s.connect(('8.8.8.8', 1))
-        local_ip = s.getsockname()[0]
-        s.close()
-        return local_ip
+        # Directly use 'localhost' for local IP
+        return '127.0.0.1'
     except Exception as e:
-        print(f"An error occurred while getting the local IP address: {e}")
-        return "127.0.0.1"
-
-def format_timestamp():
-    pst = pytz.timezone('America/Los_Angeles')
-    now = datetime.now(pst)
-    return now.strftime('%-m-%-d-%y at %-I:%M %p')
+        print(f"Error getting IP address: {e}")
+    return "unknown"
 
 def send_speedtest_data(download_speed, upload_speed, ping):
     try:
+        # Get hostname and IP address
         hostname = socket.gethostname()
-        ip_address = get_local_ip()
-        timestamp = format_timestamp()
+        ip_address = get_ip_address()
+        timestamp = datetime.now().isoformat()
 
         data = {
             "hostname": hostname,
@@ -53,6 +49,7 @@ def send_speedtest_data(download_speed, upload_speed, ping):
 def run_speedtest():
     try:
         st = speedtest.Speedtest()
+        st.get_servers([SERVER_ID])
         st.get_best_server()
         st.download()
         st.upload()
@@ -65,6 +62,6 @@ def run_speedtest():
 if __name__ == "__main__":
     while True:
         download_speed, upload_speed, ping = run_speedtest()
-        if download_speed is not None and upload_speed is not None and ping is not None:
+        if download_speed and upload_speed and ping:
             send_speedtest_data(download_speed, upload_speed, ping)
-        time.sleep(60)
+        time.sleep(300)  # Send data every 5 minutes
